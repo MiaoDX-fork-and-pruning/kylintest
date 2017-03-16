@@ -51,3 +51,4 @@ void Mecanum_Decomp(const Mecanum_t* mecanum, const float* v, float* w)
 	w[2] = (-v[0] + v[1] + v[2] * mecanum->l) / mecanum->r;
 	w[3] = (-v[0] - v[1] + v[2] * mecanum->l) / mecanum->r;
 }
+

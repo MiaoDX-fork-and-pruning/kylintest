@@ -18,19 +18,19 @@
 
 void DBUS_Enc(const DBUS_t* dbus, uint8_t* buf)
 {
-	RCP_Enc(&dbus->rcp, buf);
-	HCP_Enc(&dbus->hcp, buf + HCP_OFFSET);
+	Rcp_Enc(&dbus->rcp, buf);
+	Hcp_Enc(&dbus->hcp, buf + HCP_OFFSET);
 }
 
 void DBUS_Dec(DBUS_t* dbus, const uint8_t* buf)
 {
-	RCP_Dec(&dbus->rcp, buf);
-	HCP_Dec(&dbus->hcp, buf + HCP_OFFSET);
+	Rcp_Dec(&dbus->rcp, buf);
+	Hcp_Dec(&dbus->hcp, buf + HCP_OFFSET);
 }
 
-void DBUS_Rst(DBUS_t* dbus)
+void DBUS_Init(DBUS_t* dbus)
 {
-	RCP_Rst(&dbus->rcp);
-	HCP_Rst(&dbus->hcp);
+	Rcp_Init(&dbus->rcp);
+	Hcp_Init(&dbus->hcp);
 }
 

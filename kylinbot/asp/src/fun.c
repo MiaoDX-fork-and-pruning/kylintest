@@ -46,6 +46,11 @@ Flag_t Flag_Get(const Flag_t* flag, Flag_t mask)
 	return (*flag) & mask;
 }
 
+Flag_t Flag_Hit(const Flag_t* flag, Flag_t mask)
+{
+	return (((*flag) & mask) == mask);
+}
+
 void Flag_Set(Flag_t* flag, Flag_t mask)
 {
 	(*flag) |= mask;
@@ -76,9 +81,9 @@ void Flag_Cpy(Flag_t* flag, Flag_t src, Flag_t mask)
 	}
 }
 
-void Flag_Det(uint8_t cond, Flag_t* flag, Flag_t mask)
+void Flag_Det(Flag_t* flag, Flag_t mask, uint32_t condition)
 {
-	if (cond) {
+	if (condition) {
 		Flag_Set(flag, mask);
 	} else {
 		Flag_Clr(flag, mask);

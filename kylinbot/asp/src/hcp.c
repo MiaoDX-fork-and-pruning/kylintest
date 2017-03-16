@@ -16,7 +16,7 @@
 
 #include "hcp.h"
 
-void HCP_Enc(const HCP_t* hcp, uint8_t* buf)
+void Hcp_Enc(const Hcp_t* hcp, uint8_t* buf)
 {
 	buf[0] = hcp->mouse.x;
 	buf[1] = hcp->mouse.x >> 8;
@@ -32,7 +32,7 @@ void HCP_Enc(const HCP_t* hcp, uint8_t* buf)
 	buf[11] = hcp->res.val >> 8;
 }
 
-void HCP_Dec(HCP_t* hcp, const uint8_t* buf)
+void Hcp_Dec(Hcp_t* hcp, const uint8_t* buf)
 {
 	hcp->mouse.x = buf[0] | (buf[1] << 8);   //!< Mouse X axis
 	hcp->mouse.y = buf[2] | (buf[3] << 8);   //!< Mouse Y axis
@@ -43,7 +43,7 @@ void HCP_Dec(HCP_t* hcp, const uint8_t* buf)
 	hcp->res.val = buf[10] | (buf[11] << 8); //!< Reserve
 }
 
-void HCP_Rst(HCP_t* hcp)
+void Hcp_Init(Hcp_t* hcp)
 {
 
 	uint8_t i = 0;

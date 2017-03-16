@@ -16,23 +16,30 @@
  
 #include "msg.h"
 
-const MsgHead_t msg_header_vrc = MSG_HEADER_VRC;
-const MsgHead_t msg_header_vhc = MSG_HEADER_VHC;
-const MsgHead_t msg_header_vdbus = MSG_HEADER_VDBUS;
-const MsgHead_t msg_header_vcbus = MSG_HEADER_VCBUS;
-const MsgHead_t msg_header_zgyro = MSG_HEADER_ZGYRO;
-const MsgHead_t msg_header_motor = MSG_HEADER_MOTOR;
-const MsgHead_t msg_header_odome = MSG_HEADER_ODOME;
-const MsgHead_t msg_header_grasp = MSG_HEADER_GRASP;
-const MsgHead_t msg_header_statu = MSG_HEADER_STATU;
-const MsgHead_t msg_header_calib = MSG_HEADER_CALIB;
+const MsgHead_t msg_head_vrc = MSG_HEAD_VRC;
+const MsgHead_t msg_head_vhc = MSG_HEAD_VHC;
+const MsgHead_t msg_head_vdbus = MSG_HEAD_VDBUS;
+const MsgHead_t msg_head_vcbus = MSG_HEAD_VCBUS;
+const MsgHead_t msg_head_zgyro = MSG_HEAD_ZGYRO;
+const MsgHead_t msg_head_imu9x = MSG_HEAD_IMU9X;
+const MsgHead_t msg_head_motor = MSG_HEAD_MOTOR;
+const MsgHead_t msg_head_odome = MSG_HEAD_ODOME;
+const MsgHead_t msg_head_grasp = MSG_HEAD_GRASP;
+const MsgHead_t msg_head_statu = MSG_HEAD_STATU;
+const MsgHead_t msg_head_calib = MSG_HEAD_CALIB;
+const MsgHead_t msg_head_pid_calib = MSG_HEAD_PID_CALIB;
+const MsgHead_t msg_head_imu_calib = MSG_HEAD_IMU_CALIB;
+const MsgHead_t msg_head_mag_calib = MSG_HEAD_MAG_CALIB;
+const MsgHead_t msg_head_vel_calib = MSG_HEAD_VEL_CALIB;
+const MsgHead_t msg_head_mec_calib = MSG_HEAD_MEC_CALIB;
+const MsgHead_t msg_head_pos_calib = MSG_HEAD_POS_CALIB;
 
 /**
- * Brief: Push a single message to message buffer. 
- * @arg buf Message buffer
- * @arg head Message head
- * @arg body Message body
- * @ret Message length (num of bytes)
+ * @brief Push a single message to message buffer. 
+ * @param buf Message buffer
+ * @param head Message head
+ * @param body Message body
+ * @return Message length (num of bytes)
  */
 uint32_t Msg_Push(FIFO_t* fifo, const void* head, const void* body)
 {
@@ -54,35 +61,37 @@ uint32_t Msg_Push(FIFO_t* fifo, const void* head, const void* body)
 	}
 }
 
-
 /**
- * Brief: Pop a single message from message buffer. 
- * @arg buf Message buffer
- * @arg head Message head
- * @arg body Message body
- * @ret Message length (num of bytes)
+ * @brief: Pop a single message from message buffer. 
+ * @param buf Message buffer
+ * @param head Message head
+ * @param body Message body
+ * @param Message length (num of bytes)
  */
 uint32_t Msg_Pop(FIFO_t* fifo, const void* head, void* body)
 {
-	MsgHead_t mhead;
-	uint8_t buf[MSG_LEN_MAX];
 	const MsgHead_t* phead = (MsgHead_t*)head;
 	uint32_t len = sizeof(MsgHead_t) + phead->attr.length + 2;
 	if (FIFO_GetUsed(fifo) < len) {
 		return 0;
-	}
-	FIFO_Peek(fifo, (uint8_t*)&mhead, sizeof(MsgHead_t));
-	if (mhead.attr.id != phead->attr.id) {
-		return 0;
-	}
-	if (mhead.attr.length != phead->attr.length) {
-		return 0;
-	}
-	FIFO_Peek(fifo, buf, len);
-	if (CRC16Check(buf, len, phead->attr.token)) {
-		memcpy(body, buf+sizeof(MsgHead_t), phead->attr.length);
-		FIFO_Pop(fifo, buf, len);
-		return len;
+	} else {
+		MsgHead_t mhead;
+		FIFO_Peek(fifo, (uint8_t*)&mhead, sizeof(MsgHead_t));
+		if (mhead.attr.id != phead->attr.id) {
+			return 0;
+		} else if (mhead.attr.length != phead->attr.length) {
+			return 0;
+		} else if (mhead.attr.token != phead->attr.token) {
+			return 0;
+		} else {
+			uint8_t buf[MSG_LEN_MAX];
+			FIFO_Peek(fifo, buf, len);
+			if (CRC16Check(buf, len, phead->attr.token)) {
+				memcpy(body, buf + sizeof(MsgHead_t), phead->attr.length);
+				FIFO_Pop(fifo, buf, len);
+				return len;
+			}
+		}
 	}
 	return 0;
 }

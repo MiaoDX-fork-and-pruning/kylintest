@@ -16,17 +16,7 @@
 
 #include "cbus.h"
 
-void CBUS_Enc(const CBUS_t* cbus, uint8_t* cbuf)
-{
-	memcpy(cbuf, cbus, sizeof(CBUS_t));
-}
-
-void CBUS_Dec(CBUS_t* cbus, const uint8_t* cbuf)
-{
-	memcpy(cbus, cbuf, sizeof(CBUS_t));
-}
-
-void CBUS_Rst(CBUS_t* cbus)
+void CBUS_Init(CBUS_t* cbus)
 {
 	memset(cbus, 0, sizeof(CBUS_t));
 }

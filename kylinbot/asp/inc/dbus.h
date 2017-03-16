@@ -31,13 +31,13 @@ extern "C" {
 
 typedef struct
 {
-	RCP_t rcp;
-	HCP_t hcp;
+	Rcp_t rcp;
+	Hcp_t hcp;
 }DBUS_t; // RoboMasters DBUS protocol frame structure
 
 void DBUS_Enc(const DBUS_t* dbus, uint8_t* buf);
 void DBUS_Dec(DBUS_t* dbus, const uint8_t* buf);
-void DBUS_Rst(DBUS_t* dbus);
+void DBUS_Init(DBUS_t* dbus);
 
 #ifdef __cplusplus
 }

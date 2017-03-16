@@ -37,11 +37,11 @@ typedef struct
 {
 	uint16_t ch[CH_CNT];
 	uint8_t  sw[SW_CNT];
-}RCP_t; // Remote control protocol frame structure
+}Rcp_t; // Remote control protocol frame structure
 
-void RCP_Enc(const RCP_t* rcp, uint8_t* buf);
-void RCP_Dec(RCP_t* rcp, const uint8_t* buf);
-void RCP_Rst(RCP_t* rcp);
+void Rcp_Enc(const Rcp_t* rcp, uint8_t* buf);
+void Rcp_Dec(Rcp_t* rcp, const uint8_t* buf);
+void Rcp_Init(Rcp_t* rcp);
 
 #endif
 

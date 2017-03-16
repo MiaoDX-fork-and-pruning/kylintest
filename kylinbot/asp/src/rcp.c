@@ -16,7 +16,7 @@
 
 #include "rcp.h"
 
-void RCP_Enc(const RCP_t* rcp, uint8_t* buf)
+void Rcp_Enc(const Rcp_t* rcp, uint8_t* buf)
 {
 	buf[0] = rcp->ch[0] & 0xff;
 	buf[1] = (rcp->ch[1] << 3) | (rcp->ch[0] >> 8);
@@ -28,7 +28,7 @@ void RCP_Enc(const RCP_t* rcp, uint8_t* buf)
 			 (rcp->ch[3] >> 7);
 }
 
-void RCP_Dec(RCP_t* rcp, const uint8_t* buf)
+void Rcp_Dec(Rcp_t* rcp, const uint8_t* buf)
 {
 	rcp->ch[0] = (buf[0] | (buf[1] << 8)) & 0x07ff;         //!< Channel 0
 	rcp->ch[1] = ((buf[1] >> 3) | (buf[2] << 5)) & 0x07ff;  //!< Channel 1
@@ -39,7 +39,7 @@ void RCP_Dec(RCP_t* rcp, const uint8_t* buf)
 	rcp->sw[SW_IDX_R] = ((buf[5] >> 4) & 0x0003);         //!< Switch right
 }
 
-void RCP_Rst(RCP_t* rcp)
+void Rcp_Init(Rcp_t* rcp)
 {
 	uint8_t i = 0;
 	for (; i < CH_CNT; i++) {

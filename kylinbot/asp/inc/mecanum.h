@@ -23,17 +23,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#define MECANUM_LX 0.160f  // Mecanum wheel span
-#define MECANUM_LY 0.160f  // Mecanum wheel base
-#define MECANUM_R1 0.009f  // Mecanum wheel radius 1
-#define MECANUM_R2 0.070f  // Mecanum wheel radius 2
-
-#define MECANUM_L (MECANUM_LX + MECANUM_LY)
-#define MECANUM_R (MECANUM_R1 + MECANUM_R2)
-#define MECANUM_COEFF_X   (MECANUM_R1 / 4.0f)
-#define MECANUM_COEFF_Y   (MECANUM_R2 / 4.0f)
-#define MECANUM_COEFF_Z   (MECANUM_R / 4.0f / MECANUM_L)
-
 /*******************************************/
 /* Mecanum Wheel Power Transmission System */
 /*******************************************/

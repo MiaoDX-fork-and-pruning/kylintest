@@ -74,11 +74,11 @@ typedef struct
 	Mouse_t mouse;
 	Key_t key;
 	Res_t res;
-}HCP_t; // Host control protocol frame structure
+}Hcp_t; // Host control protocol frame structure
 
-void HCP_Enc(const HCP_t* hcp, uint8_t* buf);
-void HCP_Dec(HCP_t* hcp, const uint8_t* buf);
-void HCP_Rst(HCP_t* hcp);
+void Hcp_Enc(const Hcp_t* hcp, uint8_t* buf);
+void Hcp_Dec(Hcp_t* hcp, const uint8_t* buf);
+void Hcp_Init(Hcp_t* hcp);
 
 #endif
 

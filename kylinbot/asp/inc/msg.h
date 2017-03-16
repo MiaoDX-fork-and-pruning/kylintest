@@ -17,14 +17,16 @@
 #ifndef __MSG_H__
 #define __MSG_H__
 
-/*********************************************/
-/*             KylinBot Msg Type             */
-/* Basic frame structure:                    */
-/*      |id:8|length:8|token:16|data~|       */
-/*      |______________________|_____|       */
-/*                head          body~        */
-/*                                           */
-/*********************************************/
+/********************************************************/
+/*                 KylinBot Msg Type                    */
+/*     Basic frame structure:                           */
+/*       ________________________________________       */
+/*      |id:8|length:8|token:16|data~|checksum:16|      */
+/*      |______________________|_____|___________|      */
+/*      |         head         |body~|    crc    |      */
+/*      |________________________________________|      */
+/*                        Msg                           */
+/********************************************************/
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,11 +35,14 @@ extern "C" {
 #include "cbus.h"
 #include "dbus.h"
 #include "fifo.h"
+#include "calib.h"
 #include "crc16.h"
 	
 /* Message length minimum/maximum limit */
 #define MSG_LEN_MIN 4u
 #define MSG_LEN_MAX 256u
+
+#pragma pack(1)
 
 /* Message head union typedef */
 typedef union MsgHead_t
@@ -51,14 +56,13 @@ typedef union MsgHead_t
 	}attr; // Message head attributes
 }MsgHead_t; // Message head union typedef
 
-typedef RCP_t VirtualRC_t;
-typedef HCP_t VirtualHC_t;
+typedef Rcp_t VirtualRC_t;
+typedef Hcp_t VirtualHC_t;
 typedef DBUS_t VirtualDBUS_t;
 typedef CBUS_t VirtualCBUS_t;
 
 #define ZGYRO_ANGLE_RECIP 1e-2f // To scale zgyro angle to deg
 #define ZGYRO_RATE_RECIP 1e-5f // To scale zgyro rate to deg/s
-
 typedef struct
 {
 	int32_t angle; // = (deg*100)
@@ -74,7 +78,6 @@ typedef struct
 #define MOTOR_ECD_ANGLE_MAX 8191
 #define MOTOR_ECD_ANGLE_MAX 8191
 #define MOTOR_ESC_CURRENT_MAX 13000
-
 typedef struct
 {
 	uint8_t id; // 0~5
@@ -86,6 +89,19 @@ typedef struct
 
 typedef struct
 {
+	int16_t ax;
+	int16_t ay;
+	int16_t az;
+	int16_t gx;
+	int16_t gy;
+	int16_t gz;
+	int16_t mx;
+	int16_t my;
+	int16_t mz;
+}IMU9XMsg_t;
+
+typedef struct
+{
 	int32_t px; // Bot position (linear) in x-axis, unit: mm
 	int32_t py; // Bot position (linear) in y-axis, unit: mm
 	int32_t pz; // Bot position (angular) in z-axis, unit: mm
@@ -94,32 +110,19 @@ typedef struct
 	int16_t vz; // Bot velocity (angular) in z-axis, unit: mm
 }OdomeMsg_t;
 
+typedef struct
+{
+	int16_t pe; // Elevator position
+	int16_t pc; // Claw position
+}GraspMsg_t;
+
 #define CALIB_FLAG_BIT_IMU (1u<<0)
 #define CALIB_FLAG_BIT_MAG (1u<<1)
+#define CALIB_FLAG_BIT_POS (1u<<2)
 typedef struct
 {
-	uint16_t ac; // Auto calibration control bits
-	struct
-	{
-		int16_t kp;
-		int16_t ki;
-		int16_t kd;
-	}pid;
-	struct
-	{
-		int32_t elevator_h;
-		int32_t elevator_l;
-		uint16_t pwm_h;
-		uint16_t pwm_l;
-	}pos;
+	uint32_t auto_cali_flag; // Auto calibration control bits
 }CalibMsg_t;
-
-typedef struct
-{
-	int32_t pe; // Elevator position
-	int16_t ve; // Elevator velocity
-	uint16_t pc; // Claw PWM position
-}GraspMsg_t;
 
 #define WDG_ERR_BIT_RCV			   (1u<<0)
 #define WDG_ERR_BIT_TTY			   (1u<<1)
@@ -149,7 +152,7 @@ typedef struct
 
 typedef struct
 {
-	uint32_t wdg; // Bot watchdog
+	uint32_t wdg; // Watchdog
 	uint32_t ini; // Initialization status
 }StatuMsg_t;
 
@@ -162,72 +165,134 @@ typedef struct
 #define MSG_ID_VDBUS WRAP_U8(0x03)
 #define MSG_ID_VCBUS WRAP_U8(0x04)
 #define MSG_ID_ZGYRO WRAP_U8(0x05)
-#define MSG_ID_MOTOR WRAP_U8(0x06)
-#define MSG_ID_ODOME WRAP_U8(0x07)
-#define MSG_ID_GRASP WRAP_U8(0x08)
-#define MSG_ID_STATU WRAP_U8(0x09)
-#define MSG_ID_CALIB WRAP_U8(0x0a)
+#define MSG_ID_IMU9X WRAP_U8(0x06)
+#define MSG_ID_MOTOR WRAP_U8(0x07)
+#define MSG_ID_ODOME WRAP_U8(0x08)
+#define MSG_ID_GRASP WRAP_U8(0x09)
+#define MSG_ID_STATU WRAP_U8(0x0a)
+#define MSG_ID_CALIB WRAP_U8(0x0b)
+#define MSG_ID_PID_CALIB WRAP_U8(0x0c)
+#define MSG_ID_IMU_CALIB WRAP_U8(0x0d)
+#define MSG_ID_MAG_CALIB WRAP_U8(0x0e)
+#define MSG_ID_VEL_CALIB WRAP_U8(0x0f)
+#define MSG_ID_MEC_CALIB WRAP_U8(0x10)
+#define MSG_ID_POS_CALIB WRAP_U8(0x11)
 
 #define MSG_LEN_VRC sizeof(VirtualRC_t)
 #define MSG_LEN_VHC sizeof(VirtualHC_t)
 #define MSG_LEN_VDBUS sizeof(VirtualDBUS_t)
 #define MSG_LEN_VCBUS sizeof(VirtualCBUS_t)
 #define MSG_LEN_ZGYRO sizeof(ZGyroMsg_t)
+#define MSG_LEN_IMU9X sizeof(IMU9XMsg_t)
 #define MSG_LEN_MOTOR sizeof(MotorMsg_t)
 #define MSG_LEN_ODOME sizeof(OdomeMsg_t)
 #define MSG_LEN_GRASP sizeof(GraspMsg_t)
 #define MSG_LEN_STATU sizeof(StatuMsg_t)
 #define MSG_LEN_CALIB sizeof(CalibMsg_t)
+#define MSG_LEN_PID_CALIB sizeof(PIDCalib_t)
+#define MSG_LEN_IMU_CALIB sizeof(IMUCalib_t)
+#define MSG_LEN_MAG_CALIB sizeof(MagCalib_t)
+#define MSG_LEN_VEL_CALIB sizeof(VelCalib_t)
+#define MSG_LEN_MEC_CALIB sizeof(MecCalib_t)
+#define MSG_LEN_POS_CALIB sizeof(PosCalib_t)
 	
 #define MSG_TOKEN_VRC WRAP_U16(0x1234)
 #define MSG_TOKEN_VHC WRAP_U16(0x2345)
 #define MSG_TOKEN_VDBUS WRAP_U16(0x3456)
 #define MSG_TOKEN_VCBUS WRAP_U16(0x4567)
 #define MSG_TOKEN_ZGYRO WRAP_U16(0x5678)
-#define MSG_TOKEN_MOTOR WRAP_U16(0x6789)
-#define MSG_TOKEN_ODOME WRAP_U16(0x789a)
-#define MSG_TOKEN_GRASP WRAP_U16(0x89ab)
-#define MSG_TOKEN_STATU WRAP_U16(0x9abc)
-#define MSG_TOKEN_CALIB WRAP_U16(0xabcd)
+#define MSG_TOKEN_IMU9X WRAP_U16(0x6789)
+#define MSG_TOKEN_MOTOR WRAP_U16(0x789a)
+#define MSG_TOKEN_ODOME WRAP_U16(0x89ab)
+#define MSG_TOKEN_GRASP WRAP_U16(0x9abc)
+#define MSG_TOKEN_STATU WRAP_U16(0xabcd)
+#define MSG_TOKEN_CALIB WRAP_U16(0xbcde)
+#define MSG_TOKEN_PID_CALIB WRAP_U16(0xcdef)
+#define MSG_TOKEN_IMU_CALIB WRAP_U16(0xfedc)
+#define MSG_TOKEN_MAG_CALIB WRAP_U16(0xedcb)
+#define MSG_TOKEN_VEL_CALIB WRAP_U16(0xdcba)
+#define MSG_TOKEN_MEC_CALIB WRAP_U16(0xcba9)
+#define MSG_TOKEN_POS_CALIB WRAP_U16(0xba98)
 
-#define MSG_HEADER_VALUE(ID,LEN,TOKEN) ((WRAP_U32(TOKEN)<<16) | (WRAP_U32(LEN)<<8) | WRAP_U32(ID))
-#define MSG_HEADER_VALUE_OF(NAME) MSG_HEADER_VALUE(MSG_ID_##NAME,MSG_LEN_##NAME,MSG_TOKEN_##NAME)
+#define MSG_HEAD_VALUE(ID,LEN,TOKEN) ((WRAP_U32(TOKEN)<<16) | (WRAP_U32(LEN)<<8) | WRAP_U32(ID))
+#define MSG_HEAD_VALUE_OF(NAME) MSG_HEAD_VALUE(MSG_ID_##NAME,MSG_LEN_##NAME,MSG_TOKEN_##NAME)
 
-#define MSG_HEADER_VALUE_VRC MSG_HEADER_VALUE_OF(VRC)
-#define MSG_HEADER_VALUE_VHC MSG_HEADER_VALUE_OF(VHC)
-#define MSG_HEADER_VALUE_VDBUS MSG_HEADER_VALUE_OF(VDBUS)
-#define MSG_HEADER_VALUE_VCBUS MSG_HEADER_VALUE_OF(VCBUS)
-#define MSG_HEADER_VALUE_ZGYRO MSG_HEADER_VALUE_OF(ZGYRO)
-#define MSG_HEADER_VALUE_MOTOR MSG_HEADER_VALUE_OF(MOTOR)
-#define MSG_HEADER_VALUE_ODOME MSG_HEADER_VALUE_OF(ODOME)
-#define MSG_HEADER_VALUE_GRASP MSG_HEADER_VALUE_OF(GRASP)
-#define MSG_HEADER_VALUE_STATU MSG_HEADER_VALUE_OF(STATU)
-#define MSG_HEADER_VALUE_CALIB MSG_HEADER_VALUE_OF(CALIB)
+#define MSG_HEAD_VALUE_VRC MSG_HEAD_VALUE_OF(VRC)
+#define MSG_HEAD_VALUE_VHC MSG_HEAD_VALUE_OF(VHC)
+#define MSG_HEAD_VALUE_VDBUS MSG_HEAD_VALUE_OF(VDBUS)
+#define MSG_HEAD_VALUE_VCBUS MSG_HEAD_VALUE_OF(VCBUS)
+#define MSG_HEAD_VALUE_ZGYRO MSG_HEAD_VALUE_OF(ZGYRO)
+#define MSG_HEAD_VALUE_IMU9X MSG_HEAD_VALUE_OF(IMU9X)
+#define MSG_HEAD_VALUE_MOTOR MSG_HEAD_VALUE_OF(MOTOR)
+#define MSG_HEAD_VALUE_ODOME MSG_HEAD_VALUE_OF(ODOME)
+#define MSG_HEAD_VALUE_GRASP MSG_HEAD_VALUE_OF(GRASP)
+#define MSG_HEAD_VALUE_STATU MSG_HEAD_VALUE_OF(STATU)
+#define MSG_HEAD_VALUE_CALIB MSG_HEAD_VALUE_OF(CALIB)
+#define MSG_HEAD_VALUE_PID_CALIB MSG_HEAD_VALUE_OF(PID_CALIB)
+#define MSG_HEAD_VALUE_IMU_CALIB MSG_HEAD_VALUE_OF(IMU_CALIB)
+#define MSG_HEAD_VALUE_MAG_CALIB MSG_HEAD_VALUE_OF(MAG_CALIB)
+#define MSG_HEAD_VALUE_VEL_CALIB MSG_HEAD_VALUE_OF(VEL_CALIB)
+#define MSG_HEAD_VALUE_MEC_CALIB MSG_HEAD_VALUE_OF(MEC_CALIB)
+#define MSG_HEAD_VALUE_POS_CALIB MSG_HEAD_VALUE_OF(POS_CALIB)
 
-#define MSG_HEADER_VRC { MSG_HEADER_VALUE_VRC }
-#define MSG_HEADER_VHC { MSG_HEADER_VALUE_VHC }
-#define MSG_HEADER_VDBUS { MSG_HEADER_VALUE_VDBUS }
-#define MSG_HEADER_VCBUS { MSG_HEADER_VALUE_VCBUS }
-#define MSG_HEADER_ZGYRO { MSG_HEADER_VALUE_ZGYRO }
-#define MSG_HEADER_MOTOR { MSG_HEADER_VALUE_MOTOR }
-#define MSG_HEADER_ODOME { MSG_HEADER_VALUE_ODOME }
-#define MSG_HEADER_GRASP { MSG_HEADER_VALUE_GRASP }
-#define MSG_HEADER_STATU { MSG_HEADER_VALUE_STATU }
-#define MSG_HEADER_CALIB { MSG_HEADER_VALUE_CALIB }
+#define MSG_HEAD_VRC { MSG_HEAD_VALUE_VRC }
+#define MSG_HEAD_VHC { MSG_HEAD_VALUE_VHC }
+#define MSG_HEAD_VDBUS { MSG_HEAD_VALUE_VDBUS }
+#define MSG_HEAD_VCBUS { MSG_HEAD_VALUE_VCBUS }
+#define MSG_HEAD_ZGYRO { MSG_HEAD_VALUE_ZGYRO }
+#define MSG_HEAD_IMU9X { MSG_HEAD_VALUE_IMU9X }
+#define MSG_HEAD_MOTOR { MSG_HEAD_VALUE_MOTOR }
+#define MSG_HEAD_ODOME { MSG_HEAD_VALUE_ODOME }
+#define MSG_HEAD_GRASP { MSG_HEAD_VALUE_GRASP }
+#define MSG_HEAD_STATU { MSG_HEAD_VALUE_STATU }
+#define MSG_HEAD_CALIB { MSG_HEAD_VALUE_CALIB }
+#define MSG_HEAD_PID_CALIB { MSG_HEAD_VALUE_PID_CALIB }
+#define MSG_HEAD_IMU_CALIB { MSG_HEAD_VALUE_IMU_CALIB }
+#define MSG_HEAD_MAG_CALIB { MSG_HEAD_VALUE_MAG_CALIB }
+#define MSG_HEAD_VEL_CALIB { MSG_HEAD_VALUE_VEL_CALIB }
+#define MSG_HEAD_MEC_CALIB { MSG_HEAD_VALUE_MEC_CALIB }
+#define MSG_HEAD_POS_CALIB { MSG_HEAD_VALUE_POS_CALIB }
+
+#define MSG_TYPE_IDX_VRC 0u
+#define MSG_TYPE_IDX_VHC 1u
+#define MSG_TYPE_IDX_VDBUS 2u
+#define MSG_TYPE_IDX_VCBUS 3u
+#define MSG_TYPE_IDX_ZGYRO 4u
+#define MSG_TYPE_IDX_IMU9X 5u
+#define MSG_TYPE_IDX_MOTOR 6u
+#define MSG_TYPE_IDX_ODOME 7u
+#define MSG_TYPE_IDX_GRASP 8u
+#define MSG_TYPE_IDX_STATU 9u
+#define MSG_TYPE_IDX_CALIB 10u
+#define MSG_TYPE_IDX_PID_CALIB 11u
+#define MSG_TYPE_IDX_IMU_CALIB 12u
+#define MSG_TYPE_IDX_MAG_CALIB 13u
+#define MSG_TYPE_IDX_VEL_CALIB 14u
+#define MSG_TYPE_IDX_MEC_CALIB 15u
+#define MSG_TYPE_IDX_POS_CALIB 16u
 
 typedef enum
 {
-	MSG_TYPE_VRC = 0x00,
-	MSG_TYPE_VHC = 0x01,
-	MSG_TYPE_VDBUS = 0x02,
-	MSG_TYPE_VCBUS = 0x03,
-	MSG_TYPE_ZGYRO = 0x04,
-	MSG_TYPE_MOTOR = 0x05,
-	MSG_TYPE_ODOME = 0x06,
-	MSG_TYPE_GRASP = 0x07,
-	MSG_TYPE_STATU = 0x08,
-	MSG_TYPE_CALIB = 0x09,
+	MSG_TYPE_VRC = 1u << MSG_TYPE_IDX_VRC,
+	MSG_TYPE_VHC = 1u << MSG_TYPE_IDX_VHC,
+	MSG_TYPE_VDBUS = 1u << MSG_TYPE_IDX_VDBUS,
+	MSG_TYPE_VCBUS = 1u << MSG_TYPE_IDX_VCBUS,
+	MSG_TYPE_ZGYRO = 1u << MSG_TYPE_IDX_ZGYRO,
+	MSG_TYPE_IMU9X = 1u << MSG_TYPE_IDX_IMU9X,
+	MSG_TYPE_MOTOR = 1u << MSG_TYPE_IDX_MOTOR,
+	MSG_TYPE_ODOME = 1u << MSG_TYPE_IDX_ODOME,
+	MSG_TYPE_GRASP = 1u << MSG_TYPE_IDX_GRASP,
+	MSG_TYPE_STATU = 1u << MSG_TYPE_IDX_STATU,
+	MSG_TYPE_CALIB = 1u << MSG_TYPE_IDX_CALIB,
+	MSG_TYPE_PID_CALIB = 1u << MSG_TYPE_IDX_PID_CALIB,
+	MSG_TYPE_IMU_CALIB = 1u << MSG_TYPE_IDX_IMU_CALIB,
+	MSG_TYPE_MAG_CALIB = 1u << MSG_TYPE_IDX_MAG_CALIB,
+	MSG_TYPE_VEL_CALIB = 1u << MSG_TYPE_IDX_VEL_CALIB,
+	MSG_TYPE_MEC_CALIB = 1u << MSG_TYPE_IDX_MEC_CALIB,
+	MSG_TYPE_POS_CALIB = 1u << MSG_TYPE_IDX_POS_CALIB,
 }MsgType_t;
+
+#pragma pack()
 
 /**
  * Brief: Push a single message to message fifo. 
@@ -247,16 +312,23 @@ uint32_t Msg_Push(FIFO_t* fifo, const void* head, const void* body);
  */
 uint32_t Msg_Pop(FIFO_t* fifo, const void* head, void* body);
 
-extern const MsgHead_t msg_header_vrc;
-extern const MsgHead_t msg_header_vhc;
-extern const MsgHead_t msg_header_vdbus;
-extern const MsgHead_t msg_header_vcbus;
-extern const MsgHead_t msg_header_zgyro;
-extern const MsgHead_t msg_header_motor;
-extern const MsgHead_t msg_header_odome;
-extern const MsgHead_t msg_header_grasp;
-extern const MsgHead_t msg_header_statu;
-extern const MsgHead_t msg_header_calib;
+extern const MsgHead_t msg_head_vrc;
+extern const MsgHead_t msg_head_vhc;
+extern const MsgHead_t msg_head_vdbus;
+extern const MsgHead_t msg_head_vcbus;
+extern const MsgHead_t msg_head_zgyro;
+extern const MsgHead_t msg_head_imu9x;
+extern const MsgHead_t msg_head_motor;
+extern const MsgHead_t msg_head_odome;
+extern const MsgHead_t msg_head_grasp;
+extern const MsgHead_t msg_head_statu;
+extern const MsgHead_t msg_head_calib;
+extern const MsgHead_t msg_head_pid_calib;
+extern const MsgHead_t msg_head_imu_calib;
+extern const MsgHead_t msg_head_mag_calib;
+extern const MsgHead_t msg_head_vel_calib;
+extern const MsgHead_t msg_head_mec_calib;
+extern const MsgHead_t msg_head_pos_calib;
 
 #ifdef __cplusplus
 }

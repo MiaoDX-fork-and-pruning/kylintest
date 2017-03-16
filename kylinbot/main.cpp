@@ -38,33 +38,34 @@ void VCBUS_Proc(const VirtualCBUS_t* vcbus)
 
 static void Dnl_ProcCalibMsg(const CalibMsg_t* calibMsg)
 {
-	printf("*************************************CALIB********************************************\n");
-	printf("kp=%d,ki=%d,kd=%d,eh=%d,el=%d,ph=%d,pl=%d\n", calibMsg->pid.kp, calibMsg->pid.ki, calibMsg->pid.kd, calibMsg->pos.elevator_h, calibMsg->pos.elevator_l, calibMsg->pos.pwm_h, calibMsg->pos.pwm_l);
+	//printf("*************************************CALIB********************************************\n");
+	//printf("calib_msg=%x\n", calibMsg->auto_cali_flag);
+	//printf("kp=%d,ki=%d,kd=%d,eh=%d,el=%d,ph=%d,pl=%d\n", calibMsg->pid.kp, calibMsg->pid.ki, calibMsg->pid.kd, calibMsg->pos.elevator_h, calibMsg->pos.elevator_l, calibMsg->pos.pwm_h, calibMsg->pos.pwm_l);
 	//printf("*************************************CALIB********************************************\n");
 }
 
 static void Dnl_ProcMotorMsg(const MotorMsg_t* motorMsg)
 {
-	printf("*************************************MOTOR********************************************\n");
-	printf("id=%d,ecd_angle=%d,angle=%d,rate=%d,current=%d\n", motorMsg->id, motorMsg->ecd_angle, motorMsg->angle, motorMsg->rate, motorMsg->current);
+	//printf("*************************************MOTOR********************************************\n");
+	//printf("id=%d,ecd_angle=%d,angle=%d,rate=%d,current=%d\n", motorMsg->id, motorMsg->ecd_angle, motorMsg->angle, motorMsg->rate, motorMsg->current);
 }
 
 static void Dnl_ProcOdomeMsg(const OdomeMsg_t* odomeMsg)
 {
-	printf("*************************************ODOME********************************************\n");
+	//printf("*************************************ODOME********************************************\n");
 	printf("px=%d,py=%d,pz=%d,vx=%d,vy=%d,vz=%d\n", odomeMsg->px, odomeMsg->py, odomeMsg->pz, odomeMsg->vx, odomeMsg->vy, odomeMsg->vz);
 }
 
 static void Dnl_ProcStatuMsg(const StatuMsg_t* statuMsg)
 {
-	printf("*************************************STATU********************************************\n");
-	printf("wgd=%d,ini=%d\n", statuMsg->wdg, statuMsg->ini);
+	//printf("*************************************STATU********************************************\n");
+	//printf("wgd=%d,ini=%d\n", statuMsg->wdg, statuMsg->ini);
 }
 
 static void Dnl_ProcZGyroMsg(const ZGyroMsg_t* zgyroMsg)
 {
-	printf("*************************************ZGYRO********************************************\n");
-	printf("angle=%d,rate=%d\n", zgyroMsg->angle, zgyroMsg->rate);
+	//printf("*************************************ZGYRO********************************************\n");
+	//printf("angle=%d,rate=%d\n", zgyroMsg->angle, zgyroMsg->rate);
 }
 
 int main()
@@ -96,36 +97,37 @@ int main()
 		}
 		// Read input stream according to the fifo free space left
 		len = read_serial(buf[1], len, TIMEOUT);
+		//if (len > 0) printf("rx\n");
 		// Push stream into fifo
 		FIFO_Push(&rx_fifo, buf[1], len);
 		// Check if any message received
-		if (Msg_Pop(&rx_fifo, &msg_header_vrc, &vdbus.rcp)) {
+		if (Msg_Pop(&rx_fifo, &msg_head_vrc, &vdbus.rcp)) {
 			VRC_Proc(&vdbus.rcp);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_vhc, &vdbus.hcp)) {
+		else if (Msg_Pop(&rx_fifo, &msg_head_vhc, &vdbus.hcp)) {
 			VHC_Proc(&vdbus.hcp);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_vdbus, &vdbus)) {
-			VDBUS_Proc(&vdbus);
+		else if (Msg_Pop(&rx_fifo, &msg_head_vdbus, &vdbus)) {
+			//VDBUS_Proc(&vdbus);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_vcbus, &vcbus)) {
+		else if (Msg_Pop(&rx_fifo, &msg_head_vcbus, &vcbus)) {
 			VCBUS_Proc(&vcbus);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_calib, &calibMsg)) {
+		else if (Msg_Pop(&rx_fifo, &msg_head_calib, &calibMsg)) {
 			Dnl_ProcCalibMsg(&calibMsg);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_motor, &motorMsg)) {
+		else if (Msg_Pop(&rx_fifo, &msg_head_motor, &motorMsg)) {
 			Dnl_ProcMotorMsg(&motorMsg);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_zgyro, &zgyroMsg)) {
+		else if (Msg_Pop(&rx_fifo, &msg_head_zgyro, &zgyroMsg)) {
 			Dnl_ProcZGyroMsg(&zgyroMsg);
 		}
-		else if (Msg_Pop(&rx_fifo, &msg_header_odome, &odomeMsg)) {
+		else if (Msg_Pop(&rx_fifo, &msg_head_odome, &odomeMsg)) {
 			Dnl_ProcOdomeMsg(&odomeMsg);
 		}
 	}
 	disconnect_serial();
-	//printf("msg_header_vrc=%x\n", MSG_HEADER_VALUE_VRC);
+	//printf("msg_head_vrc=%x\n", msg_head_VALUE_VRC);
 	while (getchar() == '\0');
 	return 0;
 }
