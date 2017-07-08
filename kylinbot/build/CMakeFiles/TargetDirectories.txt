@@ -1,1 +1,0 @@
-/home/ubuntu/workspace/kylintest/kylinbot/build/CMakeFiles/kylintest.dir
