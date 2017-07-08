@@ -16,6 +16,7 @@
 
 #include "kylinbot.h"
 
+
 static uint8_t exit_flag = 0;
 
 static FIFO_t rx_fifo;
@@ -25,6 +26,94 @@ static KylinMsg_t rxKylinMsg;
 static FIFO_t tx_fifo;
 static uint8_t tx_buf[2][KYLINBOT_MSG_BUF_LEN];
 static KylinMsg_t txKylinMsg;
+
+serial::Serial* my_serial = NULL; // our serial
+
+void my_sleep(unsigned long milliseconds) {
+	std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
+
+
+std::string get_device_port()
+{
+	std::vector<serial::PortInfo> devices_found = serial::list_ports();
+
+	for (auto device : devices_found) {
+		printf("(%s, %s, %s)\n", device.port.c_str(), device.description.c_str(),
+			device.hardware_id.c_str());
+	}
+
+	if (devices_found.size() > 1) {
+		std::cout << "Seems that there are more than one suitable available devices" << std::endl; // !!!!!!!!! EXCEPTION
+		return std::string(); // this is empty string
+	}
+
+	if (devices_found.size() < 1) {
+		std::cout << "Seems that there is no available devices !!" << std::endl;
+		return std::string(); // !!!!!!!!! EXCEPTION
+	}
+
+	// ONLY ONE
+	return devices_found.at(0).port.c_str();
+}
+
+
+
+
+bool connect_serial(std::string port, uint32_t baud)
+{
+	if (port.empty()) {
+		std::cout << "seems no available port" << std::endl;
+		return false;
+	}
+
+	my_serial = new serial::Serial(port, baud, serial::Timeout::simpleTimeout(KYLINBOT_SERIAL_IO_TIMEOUT)); // IT IS MORE TAHN CRUCIAL TO SET THIS TIMEOUT, SINC IT WILL MAKE SURE COMMAND WILL BE SENT, ESPECIALLY IN RASPBERRY, write method.
+
+	std::cout << "Is the serial port open?";
+	if (my_serial->isOpen()) {
+		std::cout << " Yes." << std::endl;
+		std::cout << "Going to return" << std::endl;
+		return true;
+	}
+	else {
+		std::cout << " No." << std::endl;
+		return false;
+	}
+}
+
+bool connect_serial(uint32_t baud)
+{
+	std::string port = get_device_port();
+	return connect_serial(port, baud);
+}
+
+size_t read_serial(unsigned char* data, int max_size)
+{
+#ifdef _WIN32
+	my_serial->flush(); // this library have not implement flushInput in windows
+#else
+	my_serial->flushInput();
+#endif
+	return my_serial->read(data, max_size);
+}
+
+size_t write_serial(unsigned char* buf, int len)
+{
+#ifdef _WIN32
+	my_serial->flush(); // this library have not implement flushOutput in windows
+#else
+	my_serial->flushOutput();
+#endif
+	return my_serial->write(buf, len);
+}
+
+void disconnect_serial()
+{
+	my_serial->close();
+}
+
+
+
 
 static void init()
 {
@@ -50,7 +139,10 @@ static void PullMsg()
 		len = FIFO_Pop(&rx_fifo, &b, 1);
 	}
 	// Read input stream according to the fifo free space left
-	len = read_serial(rx_buf[1], len, KYLINBOT_SERIAL_IO_TIMEOUT);
+	//len = read_serial(rx_buf[1], len, KYLINBOT_SERIAL_IO_TIMEOUT);
+	
+	len = read_serial(rx_buf[1], len);
+
 	//printf("PULL LEN= %d\n", len);
 	// Push stream into fifo
 	FIFO_Push(&rx_fifo, rx_buf[1], len);
@@ -60,13 +152,16 @@ static void PullMsg()
 	}
 }
 
-static void *KylinBotMsgPullerThreadFunc(void* param)
+void KylinBotMsgPullerThreadFunc()
 {
     while (exit_flag == 0) {
-	      PullMsg();
-	      usleep(4000);
+		//std::cout << "puller" << std::endl;
+		std::cout << ">>" << std::endl;
+		PullMsg();
+	      //usleep(4000);
+		  my_sleep(4000);
 	}
-	return NULL;
+
 }
 
 static void PushMsg()
@@ -75,37 +170,52 @@ static void PushMsg()
 	txKylinMsg.cv.x = 2000;
 	uint32_t len = Msg_Push(&tx_fifo, tx_buf[1], & msg_head_kylin, &txKylinMsg);
 	FIFO_Pop(&tx_fifo, tx_buf[1], len);
-	write_serial(tx_buf[1], len, KYLINBOT_SERIAL_IO_TIMEOUT);
+	//write_serial(tx_buf[1], len, KYLINBOT_SERIAL_IO_TIMEOUT);
+	write_serial(tx_buf[1], len);
 }
 
-static void *KylinBotMsgPusherThreadFunc(void* param)
+void KylinBotMsgPusherThreadFunc()
 {
     while (exit_flag == 0) {
+		std::cout << "<<" << std::endl;
 	  PushMsg();
-	  usleep(4000);
+	  //usleep(4000);
+	  my_sleep(4000);
     }
 }
 
 int Kylinbot_Connect(const char* port)
 {
-    if (connect_serial(port,KYLINBOT_SERIAL_BAUD_RATE) == -1)
+    if (connect_serial(port,KYLINBOT_SERIAL_BAUD_RATE) == false)
     {
 	  printf("serial open error!\n");
 	  return -1;
     }
     
-    MyThread kylibotMsgPullerThread;
-    MyThread kylibotMsgPusherThread;
+	std::cout << "Serial connect done" << std::endl;
 
-    kylibotMsgPullerThread.create(KylinBotMsgPullerThreadFunc, NULL);
-    kylibotMsgPusherThread.create(KylinBotMsgPusherThreadFunc, NULL);
-    
+    //MyThread kylibotMsgPullerThread;
+    //MyThread kylibotMsgPusherThread;
+
+    //kylibotMsgPullerThread.create(KylinBotMsgPullerThreadFunc, NULL);
+    //kylibotMsgPusherThread.create(KylinBotMsgPusherThreadFunc, NULL);
+
+	std::thread t1(KylinBotMsgPullerThreadFunc);
+	std::thread t2(KylinBotMsgPusherThreadFunc);
+	std::cout << "kylintbot join start" << std::endl;
+	
+	t1.join();
+	t2.join();
+
+	std::cout << "kylintbot join done" << std::endl;
     while (1) {
+		std::cout << "kylintbot" << std::endl;
 	  //PullMsg();
     }
 	
     return 0;
 }
+
 
 int Kylinbot_PullMsg(KylinMsg_t* kylinMsg)
 {
@@ -119,9 +229,12 @@ int Kylinbot_PushMsg(const KylinMsg_t* kylinMsg)
   return 0;
 }
 
+
 int Kylinbot_Disconnect()
 {
   disconnect_serial();
   exit_flag = 1;
   return 0;
 }
+
+

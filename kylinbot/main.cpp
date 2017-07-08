@@ -1,10 +1,15 @@
 #include "main.h"
 
+using namespace std;
+
 
 #define COM_PORT 1 //"COM7"
 #define BUF_LEN 256
 #define TIMEOUT 30
 #define FRAME_N 20000
+
+#define PULLER_TIMEOUT 1000
+#define PUSHER_TIMEOUT 100
 
 void VRC_Proc(const VirtualRC_t* vrc)
 {
@@ -101,7 +106,8 @@ void PullMsg()
 		len = FIFO_Pop(&rx_fifo, &b, 1);
 	}
 	// Read input stream according to the fifo free space left
-	len = read_serial(rx_buf[1], len, TIMEOUT);
+	//len = read_serial(rx_buf[1], len, TIMEOUT);
+	len = read_serial(rx_buf[1], len);
 	//printf("PULL LEN= %d\n", len);
 	// Push stream into fifo
 	FIFO_Push(&rx_fifo, rx_buf[1], len);
@@ -145,13 +151,15 @@ void PullMsg()
 	}
 }
 
-void *KylinBotMsgPullerThreadFunc(void* param)
+
+void KylinBotMsgPullerThreadFunc_Main()
 {
     while (exit_flag == 0) {
+		cout << "main puller" << endl << endl;
 	      PullMsg();
-	      usleep(4000);
+	      //usleep(4000);
+		  my_sleep(PULLER_TIMEOUT);
 	}
-	return NULL;
 }
 
 FIFO_t tx_fifo;
@@ -163,16 +171,20 @@ void PushMsg()
 	//txKylinMsg.cv.x = 2000;
 	uint32_t len = Msg_Push(&tx_fifo, tx_buf[1], & msg_head_kylin, &txKylinMsg);
 	FIFO_Pop(&tx_fifo, tx_buf[1], len);
-	write_serial(tx_buf[1], len, TIMEOUT);
+	//write_serial(tx_buf[1], len, TIMEOUT);
+	write_serial(tx_buf[1], len);
 }
 
-void *KylinBotMsgPusherThreadFunc(void* param)
+void KylinBotMsgPusherThreadFunc_Main()
 {
   while (exit_flag == 0) {
+	  cout << "main pusher" << endl << endl;
 		PushMsg();
-		usleep(4000);
+		//usleep(4000);
+		my_sleep(PULLER_TIMEOUT);
 	}
 }
+
 
 void init()
 {
@@ -287,38 +299,63 @@ void kylinbot_control()
 
 int main(int argc, char** argv)
 {
-        init();
+    init();
 	uint32_t cnt = 0;
 	Rmp_Config(&rmp, 50000);
 	Maf_Init(&maf, maf_buf, MAF_BUF_LEN);
-	Tri_Init(&tri, 2.5e4);
-        if (argc < 2) {
-            printf("Please input device name\n");
-            return 0;
-        }
-        char* device = argv[1];
-        if (connect_serial(device,115200) == -1)
+	Tri_Init(&tri, 2.5e4); //  conversion from 'double' to 'uint32_t', possible loss of data
+	string device = "";
+	if (argc < 2) {
+		//printf("Please input device name\n");
+		//return 0;
+		cout << "Did not specify device name, will try to find one"  << endl;
+		device = get_device_port();
+	}
+	else {
+		 device = argv[1];
+	}
+    
+	if (connect_serial(device, 115200) == false)
 	{
 		printf("serial open error!\n");
 		return -1;
 	}
 
+	/*
 	MyThread kylibotMsgPullerTread;
 	MyThread kylibotMsgPusherTread;
 	
 	kylibotMsgPullerTread.create(KylinBotMsgPullerThreadFunc, NULL);
 	kylibotMsgPusherTread.create(KylinBotMsgPusherThreadFunc, NULL);
+	*/
+ 
+	std::thread t1(KylinBotMsgPullerThreadFunc_Main);
 	
+	std::thread t2(KylinBotMsgPusherThreadFunc_Main);
+	
+	//t1.join();
+	//t2.join();
+	t1.detach();
+	t2.detach();
+
+	cout << "They all joined" << endl;
+
 	//KylinBotMsgPullerThreadFunc(NULL);
 	while (!exit_flag) {
+	  /*
 	  txKylinMsg.cp.x = 0;
 	  txKylinMsg.cv.x = -1000;
 	  txKylinMsg.cp.y = 0;
 	  txKylinMsg.cv.y = 1000;
 	  txKylinMsg.cp.z = 0;
 	  txKylinMsg.cv.z = 1000;
-	  usleep(10000);
-	  //kylinbot_control();
+	  //usleep(10000);	  
+	  */
+		cout << "kylinbot_control" << endl;
+	  kylinbot_control();
+	  my_sleep(PUSHER_TIMEOUT);
+
+
 	  //PullMsg();
 	}
 	
@@ -328,15 +365,19 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+
+
 int main__(int argc, char** argv)
 {
-  int flag = Kylinbot_Connect();
+  string device = get_device_port();
+  int flag = Kylinbot_Connect(device.c_str());
   if (flag == -1) {
     return -1;
   }
   
   while (flag != -1) {
-    usleep(10000);
+    //usleep(10000);
+	my_sleep(10000);
   }
   
   Kylinbot_Disconnect();

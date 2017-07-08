@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_BUILD_TYPE "Release")
-
 project(kylintest)
 
-#find_package(OpenCV REQUIRED)
 
-if(NOT WIN32)
-ADD_DEFINITIONS("-std=c++0x -O3")
-endif(NOT WIN32)
+if( WIN32 )
+    include(C:/tools/cmake_install_libs/serial/share/serial/cmake/serialConfig.cmake)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+else()
+    find_package(serial REQUIRED)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC -pthread")
+endif()
+
+include_directories(${serial_INCLUDE_DIRS})
+
 
 include_directories(asp/inc) 
-include_directories(uart/linux) 
-FILE(GLOB sourcefiles "asp/src/*.c" "uart/linux/*.cpp" "*.cpp" "*.c")
+
+FILE(GLOB sourcefiles "asp/src/*.c"  "*.cpp" "*.c")
 add_executable( kylintest ${sourcefiles} )
-target_link_libraries( kylintest pthread ${OpenCV_LIBS})
+target_link_libraries( kylintest serial)
  
 
 
